@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="widget">
+    <h2>今日计划</h2>
+
+    <div class="input-row">
+      <input id="taskInput" placeholder="添加一条计划..." />
+      <input id="taskTime" type="time" title="提醒时间（可不填）" />
+      <button id="addBtn">+</button>
+    </div>
+
+    <div class="settings">
+      每日汇总提醒：<input id="summaryTime" type="time" />
+    </div>
+
+    <ul id="taskList"></ul>
+  </div>
+
+  <!-- 顺序很重要：先数据层，再提醒层，最后界面层 -->
+  <script src="store.js"></script>
+  <script src="reminders.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

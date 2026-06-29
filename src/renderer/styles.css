@@ -1,0 +1,64 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
+body { background: transparent; user-select: none; }
+
+.widget {
+  background: rgba(30, 30, 40, 0.88);
+  border-radius: 16px;
+  padding: 18px;
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-app-region: drag;   /* 整个面板可拖动 */
+}
+
+h2 { font-size: 18px; margin-bottom: 14px; }
+
+.input-row { display: flex; gap: 6px; margin-bottom: 10px; }
+input, button { -webkit-app-region: no-drag; }  /* 输入框/按钮不跟着拖 */
+
+#taskInput {
+  flex: 1; min-width: 0; padding: 8px; border: none; border-radius: 8px;
+  background: rgba(255,255,255,0.1); color: #fff;
+}
+#taskTime {
+  width: 88px; padding: 4px; border: none; border-radius: 8px;
+  background: rgba(255,255,255,0.1); color: #fff;
+}
+#addBtn {
+  width: 36px; border: none; border-radius: 8px;
+  background: #4f8cff; color: #fff; cursor: pointer; font-size: 18px;
+}
+
+.settings {
+  font-size: 12px; color: #bbb; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.settings input {
+  -webkit-app-region: no-drag;
+  border: none; border-radius: 6px; padding: 3px;
+  background: rgba(255,255,255,0.1); color: #fff;
+}
+
+ul { list-style: none; flex: 1; overflow-y: auto; }
+li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px; margin-bottom: 6px; border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+}
+li.done .text { text-decoration: line-through; opacity: 0.5; }
+
+.task-main { display: flex; flex-direction: column; gap: 2px; }
+.time { font-size: 11px; color: #4f8cff; }
+
+.task-actions { display: flex; gap: 4px; }
+.task-actions button {
+  width: 24px; height: 24px; border: none; border-radius: 50%;
+  cursor: pointer; color: #fff; font-size: 12px; line-height: 1;
+}
+.done-btn { background: #2ecc71; }
+.del-btn  { background: #e74c3c; }
+
+/* 滚动条美化 */
+ul::-webkit-scrollbar { width: 6px; }
+ul::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }

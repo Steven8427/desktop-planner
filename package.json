@@ -1,0 +1,16 @@
+{
+  "name": "desktop-planner",
+  "version": "1.0.0",
+  "description": "桌面今日计划小组件：定时提醒 + 系统托盘（Electron）",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^42.5.1"
+  }
+}
