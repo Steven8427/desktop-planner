@@ -2,6 +2,18 @@
 
 A clean, modern desktop daily-task app built with [Electron](https://www.electronjs.org/). It lives in the system tray and the main screen shows only today's tasks, while adding, editing and deleting live on their own pages.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/today.png" width="200" alt="Today" />
+  <img src="assets/screenshots/add.png" width="200" alt="Add Task" />
+  <img src="assets/screenshots/settings.png" width="200" alt="Settings" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/manage.png" width="200" alt="Manage" />
+  <img src="assets/screenshots/log.png" width="200" alt="Activity Log" />
+</p>
+
 ## Pages
 - **Today** — card-style list of today's tasks; tap the circle to complete; ＋ button to add
 - **Add Task** — task name, date, start/end time, repeat, check-in tracking, notes
