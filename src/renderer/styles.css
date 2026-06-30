@@ -1,57 +1,82 @@
+:root {
+  --bg-alpha: 0.88;     /* 背景透明度，会被设置面板覆盖 */
+  --accent: #4f8cff;    /* 主题色，会被设置面板覆盖 */
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
 body { background: transparent; user-select: none; }
 
 .widget {
-  background: rgba(30, 30, 40, 0.88);
+  background: rgba(30, 30, 40, var(--bg-alpha));
   border-radius: 16px;
-  padding: 18px;
+  padding: 16px;
   color: #fff;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  -webkit-app-region: drag;   /* 整个面板可拖动 */
+  -webkit-app-region: drag;   /* 面板空白处可拖动窗口 */
 }
 
-h2 { font-size: 18px; margin-bottom: 14px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.header h2 { font-size: 18px; }
+#settingsBtn {
+  -webkit-app-region: no-drag;
+  background: transparent; border: none; color: #bbb; font-size: 16px; cursor: pointer;
+}
+#settingsBtn:hover { color: #fff; }
 
-.input-row { display: flex; gap: 6px; margin-bottom: 10px; }
-input, button { -webkit-app-region: no-drag; }  /* 输入框/按钮不跟着拖 */
+.input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+input, button, select { -webkit-app-region: no-drag; }  /* 控件不跟着拖窗口 */
 
 #taskInput {
   flex: 1; min-width: 0; padding: 8px; border: none; border-radius: 8px;
   background: rgba(255,255,255,0.1); color: #fff;
 }
-#taskTime {
-  width: 88px; padding: 4px; border: none; border-radius: 8px;
-  background: rgba(255,255,255,0.1); color: #fff;
-}
 #addBtn {
   width: 36px; border: none; border-radius: 8px;
-  background: #4f8cff; color: #fff; cursor: pointer; font-size: 18px;
+  background: var(--accent); color: #fff; cursor: pointer; font-size: 18px;
 }
-
-.settings {
-  font-size: 12px; color: #bbb; margin-bottom: 12px;
-  display: flex; align-items: center; gap: 6px;
-}
-.settings input {
-  -webkit-app-region: no-drag;
-  border: none; border-radius: 6px; padding: 3px;
+#taskTime, #taskRepeat {
+  flex: 1; padding: 5px; border: none; border-radius: 8px;
   background: rgba(255,255,255,0.1); color: #fff;
 }
 
-ul { list-style: none; flex: 1; overflow-y: auto; }
+.settings-panel {
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 12px; color: #bbb;
+  background: rgba(0,0,0,0.2); border-radius: 10px;
+  padding: 10px; margin-bottom: 10px;
+  -webkit-app-region: no-drag;
+}
+.settings-panel.hidden { display: none; }
+.settings-panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.settings-panel input { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 6px; padding: 3px; }
+.settings-panel input[type=color] { padding: 0; width: 32px; height: 22px; }
+.settings-panel input[type=range] { width: 120px; }
+
+ul { list-style: none; flex: 1; overflow-y: auto; -webkit-app-region: no-drag; }
 li {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px; margin-bottom: 6px; border-radius: 8px;
   background: rgba(255,255,255,0.06);
+  -webkit-app-region: no-drag;
+  cursor: grab;
 }
+li.dragging { opacity: 0.5; }
 li.done .text { text-decoration: line-through; opacity: 0.5; }
 
-.task-main { display: flex; flex-direction: column; gap: 2px; }
-.time { font-size: 11px; color: #4f8cff; }
+.task-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.text { word-break: break-all; }
+.meta { display: flex; gap: 8px; }
+.time { font-size: 11px; color: var(--accent); }
+.repeat { font-size: 11px; color: #f0a500; }
 
-.task-actions { display: flex; gap: 4px; }
+.edit-input {
+  width: 100%; padding: 2px 4px; border: none; border-radius: 4px;
+  background: rgba(255,255,255,0.2); color: #fff; font-size: 14px;
+}
+
+.task-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .task-actions button {
   width: 24px; height: 24px; border: none; border-radius: 50%;
   cursor: pointer; color: #fff; font-size: 12px; line-height: 1;

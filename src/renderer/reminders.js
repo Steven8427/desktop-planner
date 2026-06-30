@@ -1,7 +1,9 @@
 // ===== 提醒层 =====
-// 每隔 20 秒检查一次：有没有到点的计划要提醒、有没有到每日汇总时间。
+// 每隔 20 秒检查一次：重复计划要不要重置、有没有到点的计划要提醒、有没有到每日汇总时间。
 // 用浏览器自带的 Notification 弹 Windows 通知。依赖上面的 Store。
 const Reminders = {
+  onChange: null,  // 数据被重置后用来通知界面重新渲染
+
   nowHHMM() {
     const d = new Date();
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -12,6 +14,9 @@ const Reminders = {
   },
 
   check() {
+    // 0) 跨天/跨周时，重复计划自动重置 → 重新渲染
+    if (Store.applyRecurringResets() && this.onChange) this.onChange();
+
     const cur = this.nowHHMM();
     const day = this.today();
 
@@ -37,7 +42,8 @@ const Reminders = {
     Store.save();
   },
 
-  start() {
+  start(onChange) {
+    this.onChange = onChange || null;
     setInterval(() => this.check(), 20000);
   },
 };

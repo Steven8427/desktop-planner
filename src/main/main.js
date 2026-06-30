@@ -1,12 +1,28 @@
 const { app, BrowserWindow, Tray, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let win;
 let tray;
 let isQuiting = false;   // 标记是否真的要退出（区分"点关闭"和"菜单退出"）
 
+// 窗口位置记到 userData 目录的一个小 json 里
+function stateFile() {
+  return path.join(app.getPath('userData'), 'window-state.json');
+}
+function loadBounds() {
+  try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
+}
+function saveBounds() {
+  if (!win) return;
+  try { fs.writeFileSync(stateFile(), JSON.stringify(win.getBounds())); } catch {}
+}
+
 function createWindow() {
+  const saved = loadBounds();   // 上次关的位置（没有就用系统默认）
   win = new BrowserWindow({
+    x: saved ? saved.x : undefined,
+    y: saved ? saved.y : undefined,
     width: 320,
     height: 540,
     frame: false,          // 无边框
@@ -23,8 +39,11 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // 点窗口的关闭：不真的关，而是藏到托盘
+  win.on('moved', saveBounds);   // 拖动后记住新位置
+
+  // 点窗口的关闭：先记住位置，再藏到托盘（而不是退出）
   win.on('close', (e) => {
+    saveBounds();
     if (!isQuiting) {
       e.preventDefault();
       win.hide();
