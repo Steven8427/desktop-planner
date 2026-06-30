@@ -1,12 +1,12 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 let win;
 let tray;
-let isQuiting = false;   // 区分"关闭按钮"(藏到托盘) 和 "托盘菜单退出"(真退出)
+let isQuiting = false;   // distinguishes the close button (hide to tray) from the tray "Quit" item
 
-// 窗口位置记到 userData 目录的小 json 里
+// Persist the window position/size in a small json under userData
 function stateFile() {
   return path.join(app.getPath('userData'), 'window-state.json');
 }
@@ -25,13 +25,15 @@ function createWindow() {
     y: saved ? saved.y : undefined,
     width: saved && saved.width ? saved.width : 340,
     height: saved && saved.height ? saved.height : 600,
-    minWidth: 300,         // 缩放下限，防止布局挤坏
+    minWidth: 300,         // resize lower bound so the layout never breaks
     minHeight: 460,
-    frame: false,          // 无边框（用界面里自定义的最小化/关闭按钮）
-    transparent: true,     // 透明（露出圆角 + 支持背景透明度）
+    frame: false,          // frameless (we use custom minimize/close buttons in the UI)
+    transparent: true,     // transparent for rounded corners + adjustable background opacity
     alwaysOnTop: true,
-    resizable: true,       // 允许自由缩放窗口
-    skipTaskbar: false,    // 显示任务栏按钮，最小化后能从任务栏恢复
+    resizable: true,       // allow free resizing
+    skipTaskbar: false,    // show a taskbar button so minimize can be restored from it
+    title: 'Tickly',
+    icon: path.join(__dirname, '../../assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -42,9 +44,9 @@ function createWindow() {
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   win.on('moved', saveBounds);
-  win.on('resize', saveBounds);   // 缩放后记住新尺寸
+  win.on('resize', saveBounds);   // remember the new size after resizing
 
-  // 点关闭：先记位置，再藏到托盘（而不是退出）
+  // Closing the window hides it to the tray instead of quitting
   win.on('close', (e) => {
     saveBounds();
     if (!isQuiting) {
@@ -57,24 +59,69 @@ function createWindow() {
 function createTray() {
   tray = new Tray(path.join(__dirname, '../../assets/icon.png'));
   const menu = Menu.buildFromTemplate([
-    { label: '显示 / 隐藏', click: () => { win.isVisible() ? win.hide() : win.show(); } },
+    { label: 'Show / Hide', click: () => { win.isVisible() ? win.hide() : win.show(); } },
     { type: 'separator' },
-    { label: '退出', click: () => { isQuiting = true; app.quit(); } },
+    { label: 'Quit', click: () => { isQuiting = true; app.quit(); } },
   ]);
-  tray.setToolTip('今日计划');
+  tray.setToolTip('Tickly');
   tray.setContextMenu(menu);
   tray.on('double-click', () => win.show());
 }
 
-// 界面发来的窗口控制
+// Window controls coming from the renderer
 ipcMain.on('win:minimize', () => { if (win) win.minimize(); });
 ipcMain.on('win:close', () => { if (win) win.hide(); });
 
+// Write a task to an .ics file and open it with the system's default calendar app
+function buildIcs(task) {
+  const pad = n => String(n).padStart(2, '0');
+  const esc = s => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\r?\n/g, '\\n');
+  const local = (dateStr, timeStr) => {
+    const [y, m, d] = dateStr.split('-');
+    const [hh, mm] = (timeStr || '09:00').split(':');
+    return `${y}${m}${d}T${hh}${mm}00`;
+  };
+  const now = new Date();
+  const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+
+  let dtstart, dtend;
+  if (task.startTime) {
+    dtstart = `DTSTART:${local(task.date, task.startTime)}`;
+    dtend = `DTEND:${local(task.date, task.endTime || task.startTime)}`;
+  } else {
+    const d = String(task.date).replace(/-/g, '');
+    dtstart = `DTSTART;VALUE=DATE:${d}`;
+    dtend = `DTEND;VALUE=DATE:${d}`;
+  }
+
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tickly//EN', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:tickly-${task.id || Date.now()}@tickly`,
+    `DTSTAMP:${stamp}`,
+    dtstart, dtend,
+    `SUMMARY:${esc(task.name)}`,
+    task.notes ? `DESCRIPTION:${esc(task.notes)}` : '',
+    'END:VEVENT', 'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+}
+
+ipcMain.handle('calendar:add', async (e, task) => {
+  try {
+    const file = path.join(app.getPath('temp'), `tickly-${Date.now()}.ics`);
+    fs.writeFileSync(file, buildIcs(task));
+    const err = await shell.openPath(file);   // empty string means success
+    return { ok: !err, error: err };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 app.whenReady().then(() => {
-  app.setAppUserModelId('com.desktop.planner'); // 让 Windows 通知正确显示应用名
+  app.setAppUserModelId('com.desktop.planner'); // makes Windows notifications show the app name
   createWindow();
   createTray();
 });
 
-// 常驻托盘：所有窗口关闭也不退出
+// Stay alive in the tray: do not quit when all windows are closed
 app.on('window-all-closed', () => {});

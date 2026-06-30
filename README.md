@@ -1,43 +1,47 @@
-# desktop-planner
+# Tickly
 
-一个用 [Electron](https://www.electronjs.org/) 写的桌面「今日计划」应用：简洁现代的多页面结构，常驻系统托盘。主界面只显示今天的任务，添加 / 编辑 / 删除等操作分到独立页面。
+A clean, modern desktop daily-task app built with [Electron](https://www.electronjs.org/). It lives in the system tray and the main screen shows only today's tasks, while adding, editing and deleting live on their own pages.
 
-## 页面
-- **今日计划**：卡片式显示当天任务，点圆圈即可完成；右下角 ＋ 添加任务
-- **添加任务**：任务名称、日期、开始/结束时间、是否重复、备注
-- **任务管理**：编辑、删除所有任务
-- **任务日志**：记录每次创建 / 完成 / 修改 / 删除，含完整日期时间
+## Pages
+- **Today** — card-style list of today's tasks; tap the circle to complete; ＋ button to add
+- **Add Task** — task name, date, start/end time, repeat, check-in tracking, notes
+- **Manage** — edit, delete, or add a task to the system calendar
+- **Activity Log** — every create / complete / edit / delete / check-in with full date & time
 
-## 功能
-- 📝 任务数据存在本地 localStorage
-- ⏰ 任务到「开始时间」弹 Windows 通知（可在设置中开关）
-- 🔁 重复任务（每天 / 每周），跨天自动重置
-- ⚙️ 设置页：通知开关、界面透明度、背景颜色（深色/浅色/深蓝/自定义，文字按背景明暗自动反色）
-- 🪟 自定义最小化 / 关闭按钮，窗口可自由缩放
-- 🖱️ 系统托盘常驻，记住窗口位置和大小
+## Features
+- 📝 Tasks stored locally in localStorage
+- ⏰ Notification when a task is due (with a configurable "remind before" lead time)
+- 🔁 Repeating tasks (daily / weekly), auto-reset each period
+- 🔥 Check-in streak tracking (one per day, deduped by date)
+- 📅 Add a task to the system calendar via a standard `.ics` file
+- 🌐 Multilingual UI: English / 中文 / Français
+- 🎨 Settings: notification toggle, opacity, background color (text auto-inverts for readability)
+- 🪟 Custom minimize / close buttons, resizable window
+- 🖱️ Tray resident, remembers window position and size
 
-## 运行
+## Run
 ```bash
 npm install
 npm start
 ```
 
-## 项目结构
+## Project structure
 ```
 desktop-planner/
-├── assets/icon.png        # 托盘图标
+├── assets/icon.png        # app & tray icon
 └── src/
-    ├── main/main.js       # 主进程：窗口 + 托盘
-    ├── preload/preload.js # 预加载桥梁
-    └── renderer/          # 界面（渲染进程）
+    ├── main/main.js       # main process: window, tray, calendar export
+    ├── preload/preload.js # context bridge
+    └── renderer/          # UI (renderer process)
         ├── index.html
-        ├── store.js       # 数据层
-        ├── reminders.js   # 提醒层
-        ├── app.js         # 界面层
+        ├── store.js       # data layer
+        ├── i18n.js        # translations
+        ├── reminders.js   # reminder layer
+        ├── app.js         # UI layer
         └── styles.css
 ```
 
-## 后续计划
-- [ ] 用 electron-store 替代 localStorage，持久化更可靠
-- [ ] 用 electron-builder 打包成 .exe
-- [ ] 开机自启动
+## Roadmap
+- [ ] Replace localStorage with electron-store for more reliable persistence
+- [ ] Package as an .exe with electron-builder
+- [ ] Launch on system startup

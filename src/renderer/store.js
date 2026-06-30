@@ -1,5 +1,5 @@
-// ===== 数据层 =====
-// 计划(tasks) + 操作日志(logs) + 用户设置(settings)，都用 localStorage 持久化。
+// ===== Data layer =====
+// tasks + activity logs + user settings, all persisted in localStorage.
 const Store = {
   tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
   logs: JSON.parse(localStorage.getItem('logs') || '[]'),
@@ -11,10 +11,12 @@ const Store = {
     localStorage.setItem('settings', JSON.stringify(this.settings));
   },
 
-  // 记一条日志（创建/完成/修改/删除）
-  addLog(action, name) {
-    this.logs.push({ time: Date.now(), action, name });
-    if (this.logs.length > 500) this.logs = this.logs.slice(-500); // 只留最近 500 条
+  // Append a log entry; n is an optional number (check-in streak count)
+  addLog(action, name, n) {
+    const entry = { time: Date.now(), action, name };
+    if (n != null) entry.n = n;
+    this.logs.push(entry);
+    if (this.logs.length > 500) this.logs = this.logs.slice(-500); // keep last 500
   },
 
   addTask(data) {
@@ -28,13 +30,15 @@ const Store = {
       notes: data.notes || '',
       repeat: data.repeat || 'none',        // 'none' | 'daily' | 'weekly'
       repeatWeekday: new Date(date + 'T00:00').getDay(),
+      checkin: !!data.checkin,              // whether check-in tracking is enabled
+      checkinDates: [],                     // array of checked-in dates ['YYYY-MM-DD']
       lastResetDate: new Date().toDateString(),
       done: false,
       firedDate: '',
       createdAt: Date.now(),
     };
     this.tasks.push(task);
-    this.addLog('创建任务', task.name);
+    this.addLog('create', task.name);
     this.save();
     return task;
   },
@@ -48,8 +52,9 @@ const Store = {
     t.endTime = data.endTime || '';
     t.notes = data.notes || '';
     t.repeat = data.repeat || 'none';
+    t.checkin = !!data.checkin;             // keep checkinDates, don't wipe it
     t.repeatWeekday = new Date((t.date || todayDateStr()) + 'T00:00').getDay();
-    this.addLog('修改任务', t.name);
+    this.addLog('edit', t.name);
     this.save();
   },
 
@@ -57,7 +62,24 @@ const Store = {
     const t = this.tasks.find(t => t.id === id);
     if (!t) return;
     t.done = !t.done;
-    this.addLog(t.done ? '完成任务' : '取消完成', t.name);
+    const today = todayDateStr();
+
+    if (t.checkin) {
+      if (!Array.isArray(t.checkinDates)) t.checkinDates = [];
+      if (t.done) {
+        // Completed -> record one check-in per day (dedupe by date)
+        if (!t.checkinDates.includes(today)) {
+          t.checkinDates.push(today);
+          this.addLog('checkin', t.name, t.checkinDates.length);
+        }
+      } else {
+        // Reopened -> undo today's check-in
+        t.checkinDates = t.checkinDates.filter(d => d !== today);
+        this.addLog('uncomplete', t.name);
+      }
+    } else {
+      this.addLog(t.done ? 'complete' : 'uncomplete', t.name);
+    }
     this.save();
   },
 
@@ -65,16 +87,22 @@ const Store = {
     const t = this.tasks.find(t => t.id === id);
     if (!t) return;
     this.tasks = this.tasks.filter(x => x.id !== id);
-    this.addLog('删除任务', t.name);
+    this.addLog('delete', t.name);
     this.save();
   },
 
+  checkinCount(task) {
+    return Array.isArray(task.checkinDates) ? task.checkinDates.length : 0;
+  },
+
+  // Whether a task belongs to "today": daily -> always; weekly -> weekday matches; else by date
   isToday(task) {
     if (task.repeat === 'daily') return true;
     if (task.repeat === 'weekly') return new Date().getDay() === task.repeatWeekday;
     return task.date === todayDateStr();
   },
 
+  // Recurring tasks: when the day/week rolls over, reset "done" so they show up again
   applyRecurringResets() {
     const today = new Date().toDateString();
     const weekday = new Date().getDay();
@@ -90,38 +118,43 @@ const Store = {
     return changed;
   },
 
-  // ---- 设置 ----
+  // ---- settings ----
   setNotifications(on) { this.settings.notifications = on; this.save(); },
   setOpacity(v) { this.settings.opacity = v; this.save(); },
   setBg(c) { this.settings.bg = c; this.save(); },
+  setLang(l) { this.settings.lang = l; this.save(); },
+  setReminderLead(min) { this.settings.reminderLead = min; this.save(); },
+  setDefaultCheckin(on) { this.settings.defaultCheckin = on; this.save(); },
 };
 
-// 工具：今天的 'YYYY-MM-DD'
+// Helper: today's date as 'YYYY-MM-DD'
 function todayDateStr() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-// 工具：时间戳 → 'YYYY-MM-DD HH:MM'
+// Helper: timestamp -> 'YYYY-MM-DD HH:MM'
 function fmtDateTime(ts) {
   const d = new Date(ts);
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// 兼容老数据：早期字段是 text/time、没有 id/date 等，统一补齐
+// Backward compatibility: early versions used text/time and had no id/date/checkin etc.
 (function migrate() {
   let changed = false;
   Store.tasks.forEach((t, i) => {
     if (t.id == null) { t.id = Date.now() + i; changed = true; }
-    if (t.name == null) { t.name = t.text || '(未命名)'; changed = true; }
+    if (t.name == null) { t.name = t.text || '(untitled)'; changed = true; }
     if (t.startTime == null) { t.startTime = t.time || ''; changed = true; }
     if (t.endTime == null) { t.endTime = ''; changed = true; }
     if (t.date == null) { t.date = todayDateStr(); changed = true; }
     if (t.notes == null) { t.notes = ''; changed = true; }
     if (t.repeat == null) { t.repeat = 'none'; changed = true; }
     if (t.repeatWeekday == null) { t.repeatWeekday = new Date().getDay(); changed = true; }
+    if (t.checkin == null) { t.checkin = false; changed = true; }
+    if (t.checkinDates == null) { t.checkinDates = []; changed = true; }
     if (t.lastResetDate == null) { t.lastResetDate = new Date().toDateString(); changed = true; }
     if (t.firedDate == null) { t.firedDate = ''; changed = true; }
     if (t.createdAt == null) { t.createdAt = t.id; changed = true; }

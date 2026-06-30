@@ -1,7 +1,8 @@
 {
   "name": "desktop-planner",
+  "productName": "Tickly",
   "version": "1.0.0",
-  "description": "桌面今日计划小组件：定时提醒 + 系统托盘（Electron）",
+  "description": "Tickly — 每日任务桌面应用：今日计划、提醒、多语言（Electron）",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
