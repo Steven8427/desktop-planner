@@ -6,17 +6,22 @@
 </head>
 <body>
   <div class="app">
-    <!-- 顶栏：返回 / 标题 / 最小化 / 关闭 -->
+    <!-- 顶栏：三栏对齐（左:返回 / 中:标题+日期 / 右:窗口按钮） -->
     <header class="topbar">
-      <button id="backBtn" class="icon-btn back hidden" title="返回">←</button>
-      <h1 id="pageTitle">今日计划</h1>
+      <div class="left">
+        <button id="backBtn" class="icon-btn back hidden" title="返回">←</button>
+      </div>
+      <div class="center">
+        <h1 id="pageTitle">今日计划</h1>
+        <div id="headerDate" class="subtitle"></div>
+      </div>
       <div class="win-controls">
         <button id="minBtn" class="icon-btn" title="最小化">—</button>
         <button id="closeBtn" class="icon-btn" title="关闭">✕</button>
       </div>
     </header>
 
-    <!-- 内容区：四个页面，同一时刻只显示一个 -->
+    <!-- 内容区：五个页面，同一时刻只显示一个 -->
     <main class="content">
       <!-- 今日任务 -->
       <section id="view-today" class="view active">
@@ -45,7 +50,7 @@
         </form>
       </section>
 
-      <!-- 任务管理：编辑 / 删除 -->
+      <!-- 任务管理 -->
       <section id="view-manage" class="view">
         <ul id="manageList" class="task-list"></ul>
         <p id="manageEmpty" class="empty">还没有任务</p>
@@ -55,6 +60,29 @@
       <section id="view-log" class="view">
         <ul id="logList" class="log-list"></ul>
         <p id="logEmpty" class="empty">还没有日志记录</p>
+      </section>
+
+      <!-- 设置 -->
+      <section id="view-settings" class="view">
+        <div class="settings">
+          <label class="setting-row">
+            <span>任务提醒通知</span>
+            <input id="s-notify" type="checkbox" class="switch" />
+          </label>
+          <label class="setting-row">
+            <span>界面透明度</span>
+            <input id="s-opacity" type="range" min="0.3" max="1" step="0.05" />
+          </label>
+          <div class="setting-row">
+            <span>背景</span>
+            <div class="bg-presets">
+              <button class="bg-preset" data-bg="#1e1e28" style="background:#1e1e28" title="深色"></button>
+              <button class="bg-preset" data-bg="#f2f3f7" style="background:#f2f3f7" title="浅色"></button>
+              <button class="bg-preset" data-bg="#13233a" style="background:#13233a" title="深蓝"></button>
+              <input id="s-bg" type="color" title="自定义颜色" />
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -66,6 +94,7 @@
       <button class="nav-item active" data-view="today"><span class="ico">🗓</span><span>今日</span></button>
       <button class="nav-item" data-view="manage"><span class="ico">📋</span><span>管理</span></button>
       <button class="nav-item" data-view="log"><span class="ico">🕘</span><span>日志</span></button>
+      <button class="nav-item" data-view="settings"><span class="ico">⚙️</span><span>设置</span></button>
     </nav>
   </div>
 

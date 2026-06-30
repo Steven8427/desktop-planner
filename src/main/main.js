@@ -23,12 +23,14 @@ function createWindow() {
   win = new BrowserWindow({
     x: saved ? saved.x : undefined,
     y: saved ? saved.y : undefined,
-    width: 340,
-    height: 600,
+    width: saved && saved.width ? saved.width : 340,
+    height: saved && saved.height ? saved.height : 600,
+    minWidth: 300,         // 缩放下限，防止布局挤坏
+    minHeight: 460,
     frame: false,          // 无边框（用界面里自定义的最小化/关闭按钮）
-    transparent: true,     // 透明（露出圆角）
+    transparent: true,     // 透明（露出圆角 + 支持背景透明度）
     alwaysOnTop: true,
-    resizable: false,
+    resizable: true,       // 允许自由缩放窗口
     skipTaskbar: false,    // 显示任务栏按钮，最小化后能从任务栏恢复
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
@@ -40,6 +42,7 @@ function createWindow() {
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   win.on('moved', saveBounds);
+  win.on('resize', saveBounds);   // 缩放后记住新尺寸
 
   // 点关闭：先记位置，再藏到托盘（而不是退出）
   win.on('close', (e) => {

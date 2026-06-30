@@ -18,11 +18,14 @@ const Reminders = {
 
     const cur = this.nowHHMM();
     const day = this.today();
+    const notifyOn = Store.settings.notifications !== false;  // 设置里的通知开关
 
     Store.tasks.forEach(task => {
       if (!task.done && Store.isToday(task) && task.startTime === cur && task.firedDate !== day) {
-        new Notification('⏰ 任务提醒', { body: task.name });
-        task.firedDate = day;
+        if (notifyOn) {
+          new Notification('⏰ 任务提醒', { body: task.name });
+          task.firedDate = day;   // 关闭通知时不打标记，开启后同一分钟仍能补提醒
+        }
       }
     });
 

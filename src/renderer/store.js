@@ -1,13 +1,14 @@
 // ===== 数据层 =====
-// 计划(tasks) + 操作日志(logs)，都用 localStorage 持久化。
-// 整个应用只通过 Store 这一个全局对象读写数据。
+// 计划(tasks) + 操作日志(logs) + 用户设置(settings)，都用 localStorage 持久化。
 const Store = {
   tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
   logs: JSON.parse(localStorage.getItem('logs') || '[]'),
+  settings: JSON.parse(localStorage.getItem('settings') || '{}'),
 
   save() {
     localStorage.setItem('tasks', JSON.stringify(this.tasks));
     localStorage.setItem('logs', JSON.stringify(this.logs));
+    localStorage.setItem('settings', JSON.stringify(this.settings));
   },
 
   // 记一条日志（创建/完成/修改/删除）
@@ -68,14 +69,12 @@ const Store = {
     this.save();
   },
 
-  // 这条任务是不是"今天"的：每天重复→总是；每周→星期几对上；否则看日期
   isToday(task) {
     if (task.repeat === 'daily') return true;
     if (task.repeat === 'weekly') return new Date().getDay() === task.repeatWeekday;
     return task.date === todayDateStr();
   },
 
-  // 重复计划：跨天/跨周时把"已完成"重置，让它重新出现
   applyRecurringResets() {
     const today = new Date().toDateString();
     const weekday = new Date().getDay();
@@ -90,6 +89,11 @@ const Store = {
     if (changed) this.save();
     return changed;
   },
+
+  // ---- 设置 ----
+  setNotifications(on) { this.settings.notifications = on; this.save(); },
+  setOpacity(v) { this.settings.opacity = v; this.save(); },
+  setBg(c) { this.settings.bg = c; this.save(); },
 };
 
 // 工具：今天的 'YYYY-MM-DD'
@@ -106,7 +110,7 @@ function fmtDateTime(ts) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// 兼容老数据：早期版本字段是 text/time、没有 id/date 等，统一补齐
+// 兼容老数据：早期字段是 text/time、没有 id/date 等，统一补齐
 (function migrate() {
   let changed = false;
   Store.tasks.forEach((t, i) => {
