@@ -1,137 +1,180 @@
-// ===== 界面层 =====
-// 把页面上的输入框、按钮、列表和 Store / Reminders 连起来。
-const input = document.getElementById('taskInput');
-const timeInput = document.getElementById('taskTime');
-const repeatInput = document.getElementById('taskRepeat');
-const addBtn = document.getElementById('addBtn');
-const list = document.getElementById('taskList');
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
-const summaryTimeInput = document.getElementById('summaryTime');
-const opacityInput = document.getElementById('opacity');
-const accentInput = document.getElementById('accent');
+// ===== 界面层 / 简单页面路由 =====
+const pageTitle = document.getElementById('pageTitle');
+const backBtn = document.getElementById('backBtn');
+const fab = document.getElementById('fab');
 
-// ---- 外观：把设置里的透明度/主题色写到 CSS 变量上 ----
-function applyAppearance() {
-  const root = document.documentElement;
-  root.style.setProperty('--bg-alpha', Store.settings.opacity ?? 0.88);
-  root.style.setProperty('--accent', Store.settings.accent || '#4f8cff');
+const TITLES = { today: '今日计划', add: '添加任务', manage: '任务管理', log: '任务日志' };
+let editingId = null;   // 不为 null 时表示"编辑模式"
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const view = document.getElementById('view-' + name);
+  if (view) view.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n =>
+    n.classList.toggle('active', n.dataset.view === name));
+
+  pageTitle.textContent = (name === 'add' && editingId) ? '编辑任务' : TITLES[name];
+  backBtn.classList.toggle('hidden', name !== 'add');   // 只有添加/编辑页显示返回
+  fab.classList.toggle('hidden', name !== 'today');     // 只有今日页显示 ＋
+
+  if (name === 'today') renderToday();
+  else if (name === 'manage') renderManage();
+  else if (name === 'log') renderLog();
 }
 
-// 初始化设置面板里的控件值
-summaryTimeInput.value = Store.settings.summaryTime || '';
-opacityInput.value = Store.settings.opacity ?? 0.88;
-accentInput.value = Store.settings.accent || '#4f8cff';
+// ---------- 今日任务 ----------
+const todayList = document.getElementById('todayList');
+const todayEmpty = document.getElementById('todayEmpty');
 
-// ---- 渲染列表 ----
-function render() {
-  list.innerHTML = '';
-  Store.tasks.forEach(task => {
+function timeText(task) {
+  if (task.startTime && task.endTime) return `${task.startTime} - ${task.endTime}`;
+  return task.startTime || task.endTime || '';
+}
+
+function renderToday() {
+  const tasks = Store.tasks.filter(t => Store.isToday(t));
+  todayList.innerHTML = '';
+  todayEmpty.classList.toggle('hidden', tasks.length > 0);
+  tasks.forEach(task => {
     const li = document.createElement('li');
-    li.className = task.done ? 'done' : '';
-    li.draggable = true;
-    li.dataset.id = task.id;
-
-    const timeLabel = task.time ? `<span class="time">⏰ ${task.time}</span>` : '';
-    const repeatLabel = (task.repeat && task.repeat !== 'none')
-      ? `<span class="repeat">🔁 ${task.repeat === 'daily' ? '每天' : '每周'}</span>` : '';
-    const meta = (timeLabel || repeatLabel) ? `<div class="meta">${timeLabel}${repeatLabel}</div>` : '';
-
+    li.className = 'card' + (task.done ? ' done' : '');
+    const time = timeText(task);
     li.innerHTML = `
-      <div class="task-main">
-        <span class="text">${task.text}</span>
-        ${meta}
-      </div>
-      <div class="task-actions">
-        <button class="done-btn" data-id="${task.id}">✓</button>
-        <button class="del-btn" data-id="${task.id}">✕</button>
+      <button class="check" data-id="${task.id}" title="完成">${task.done ? '✓' : ''}</button>
+      <div class="card-body">
+        <div class="card-name">${escapeHtml(task.name)}</div>
+        ${time ? `<div class="card-time">🕐 ${time}</div>` : ''}
       </div>`;
-    list.appendChild(li);
+    todayList.appendChild(li);
   });
 }
 
-// ---- 添加 ----
-addBtn.onclick = () => {
-  const text = input.value.trim();
-  if (!text) return;
-  Store.addTask(text, timeInput.value, repeatInput.value);
-  input.value = '';
-  timeInput.value = '';
-  repeatInput.value = 'none';
-  render();
-};
-input.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
-
-// ---- 完成 / 删除 ----
-list.addEventListener('click', e => {
-  const id = Number(e.target.dataset.id);
-  if (!id) return;
-  if (e.target.classList.contains('done-btn')) Store.toggleTask(id);
-  else if (e.target.classList.contains('del-btn')) Store.deleteTask(id);
-  render();
+todayList.addEventListener('click', e => {
+  const btn = e.target.closest('.check');
+  if (!btn) return;
+  Store.toggleTask(Number(btn.dataset.id));
+  renderToday();
 });
 
-// ---- 双击文字 = 编辑 ----
-list.addEventListener('dblclick', e => {
-  const span = e.target.closest('.text');
-  if (!span) return;
-  const li = e.target.closest('li');
-  const id = Number(li.dataset.id);
-  const task = Store.tasks.find(t => t.id === id);
-  if (!task) return;
+// ---------- 添加 / 编辑 ----------
+const addForm = document.getElementById('addForm');
+const fName = document.getElementById('f-name');
+const fDate = document.getElementById('f-date');
+const fStart = document.getElementById('f-start');
+const fEnd = document.getElementById('f-end');
+const fRepeat = document.getElementById('f-repeat');
+const fNotes = document.getElementById('f-notes');
 
-  li.draggable = false;  // 编辑时先关掉拖动，否则没法在输入框里选字
-  const box = document.createElement('input');
-  box.className = 'edit-input';
-  box.value = task.text;
-  span.replaceWith(box);
-  box.focus(); box.select();
+function openAdd() {
+  editingId = null;
+  addForm.reset();
+  fDate.value = todayDateStr();
+  showView('add');
+}
 
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    const v = box.value.trim();
-    if (v) Store.editTask(id, v);
-    render();
-  };
-  box.addEventListener('keydown', ev => {
-    if (ev.key === 'Enter') commit();
-    else if (ev.key === 'Escape') { committed = true; render(); }
-  });
-  box.addEventListener('blur', commit);
-});
+function openEdit(id) {
+  const t = Store.tasks.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  fName.value = t.name;
+  fDate.value = t.date || todayDateStr();
+  fStart.value = t.startTime || '';
+  fEnd.value = t.endTime || '';
+  fRepeat.value = t.repeat || 'none';
+  fNotes.value = t.notes || '';
+  showView('add');
+}
 
-// ---- 拖动排序 ----
-let dragId = null;
-list.addEventListener('dragstart', e => {
-  const li = e.target.closest('li');
-  if (!li) return;
-  dragId = Number(li.dataset.id);
-  li.classList.add('dragging');
-});
-list.addEventListener('dragend', e => {
-  const li = e.target.closest('li');
-  if (li) li.classList.remove('dragging');
-  dragId = null;
-});
-list.addEventListener('dragover', e => e.preventDefault());  // 允许放下
-list.addEventListener('drop', e => {
+addForm.addEventListener('submit', e => {
   e.preventDefault();
-  const li = e.target.closest('li');
-  if (!li || dragId == null) return;
-  const targetId = Number(li.dataset.id);
-  if (targetId !== dragId) { Store.reorder(dragId, targetId); render(); }
+  const data = {
+    name: fName.value.trim(),
+    date: fDate.value,
+    startTime: fStart.value,
+    endTime: fEnd.value,
+    repeat: fRepeat.value,
+    notes: fNotes.value.trim(),
+  };
+  if (!data.name) return;
+  if (editingId) Store.editTask(editingId, data);
+  else Store.addTask(data);
+  editingId = null;
+  showView('today');
 });
 
-// ---- 设置面板 ----
-settingsBtn.onclick = () => settingsPanel.classList.toggle('hidden');
-summaryTimeInput.onchange = () => Store.setSummaryTime(summaryTimeInput.value);
-opacityInput.oninput = () => { Store.setOpacity(parseFloat(opacityInput.value)); applyAppearance(); };
-accentInput.oninput = () => { Store.setAccent(accentInput.value); applyAppearance(); };
+// ---------- 任务管理 ----------
+const manageList = document.getElementById('manageList');
+const manageEmpty = document.getElementById('manageEmpty');
 
-// ---- 启动 ----
-applyAppearance();
+function renderManage() {
+  manageList.innerHTML = '';
+  manageEmpty.classList.toggle('hidden', Store.tasks.length > 0);
+  const tasks = [...Store.tasks].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  tasks.forEach(task => {
+    const repeatTxt = task.repeat === 'daily' ? ' · 🔁每天' : task.repeat === 'weekly' ? ' · 🔁每周' : '';
+    const time = timeText(task);
+    const li = document.createElement('li');
+    li.className = 'card';
+    li.innerHTML = `
+      <div class="card-body">
+        <div class="card-name">${escapeHtml(task.name)}</div>
+        <div class="card-sub">${task.date || ''}${time ? ' · ' + time : ''}${repeatTxt}</div>
+      </div>
+      <div class="card-actions">
+        <button class="edit-btn" data-id="${task.id}">编辑</button>
+        <button class="del-btn" data-id="${task.id}">删除</button>
+      </div>`;
+    manageList.appendChild(li);
+  });
+}
+
+manageList.addEventListener('click', e => {
+  const editB = e.target.closest('.edit-btn');
+  const delB = e.target.closest('.del-btn');
+  if (editB) {
+    openEdit(Number(editB.dataset.id));
+  } else if (delB) {
+    const id = Number(delB.dataset.id);
+    const t = Store.tasks.find(x => x.id === id);
+    if (t && confirm(`确定删除「${t.name}」？`)) {
+      Store.deleteTask(id);
+      renderManage();
+    }
+  }
+});
+
+// ---------- 任务日志 ----------
+const logList = document.getElementById('logList');
+const logEmpty = document.getElementById('logEmpty');
+
+function renderLog() {
+  logList.innerHTML = '';
+  logEmpty.classList.toggle('hidden', Store.logs.length > 0);
+  [...Store.logs].reverse().forEach(log => {   // 最新的在最上面
+    const li = document.createElement('li');
+    li.className = 'log-item';
+    li.textContent = `${fmtDateTime(log.time)} ${log.action}：${log.name}`;
+    logList.appendChild(li);
+  });
+}
+
+// ---------- 导航 / 窗口控制 ----------
+document.querySelectorAll('.nav-item').forEach(n =>
+  n.addEventListener('click', () => showView(n.dataset.view)));
+fab.addEventListener('click', openAdd);
+backBtn.addEventListener('click', () => { editingId = null; showView('today'); });
+
+document.getElementById('minBtn').onclick = () => window.windowApi.minimize();
+document.getElementById('closeBtn').onclick = () => window.windowApi.close();
+
+// ---------- 工具 ----------
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------- 启动 ----------
 Store.applyRecurringResets();
-render();
-Reminders.start(render);   // 把 render 传进去，重复计划自动重置后能刷新界面
+showView('today');
+Reminders.start(renderToday);

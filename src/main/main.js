@@ -1,12 +1,12 @@
-const { app, BrowserWindow, Tray, Menu } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 let win;
 let tray;
-let isQuiting = false;   // 标记是否真的要退出（区分"点关闭"和"菜单退出"）
+let isQuiting = false;   // 区分"关闭按钮"(藏到托盘) 和 "托盘菜单退出"(真退出)
 
-// 窗口位置记到 userData 目录的一个小 json 里
+// 窗口位置记到 userData 目录的小 json 里
 function stateFile() {
   return path.join(app.getPath('userData'), 'window-state.json');
 }
@@ -19,17 +19,17 @@ function saveBounds() {
 }
 
 function createWindow() {
-  const saved = loadBounds();   // 上次关的位置（没有就用系统默认）
+  const saved = loadBounds();
   win = new BrowserWindow({
     x: saved ? saved.x : undefined,
     y: saved ? saved.y : undefined,
-    width: 320,
-    height: 540,
-    frame: false,          // 无边框
-    transparent: true,     // 透明背景
-    alwaysOnTop: true,     // 永远置顶
+    width: 340,
+    height: 600,
+    frame: false,          // 无边框（用界面里自定义的最小化/关闭按钮）
+    transparent: true,     // 透明（露出圆角）
+    alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: true,     // 不在任务栏显示
+    skipTaskbar: false,    // 显示任务栏按钮，最小化后能从任务栏恢复
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -39,9 +39,9 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  win.on('moved', saveBounds);   // 拖动后记住新位置
+  win.on('moved', saveBounds);
 
-  // 点窗口的关闭：先记住位置，再藏到托盘（而不是退出）
+  // 点关闭：先记位置，再藏到托盘（而不是退出）
   win.on('close', (e) => {
     saveBounds();
     if (!isQuiting) {
@@ -54,20 +54,18 @@ function createWindow() {
 function createTray() {
   tray = new Tray(path.join(__dirname, '../../assets/icon.png'));
   const menu = Menu.buildFromTemplate([
-    {
-      label: '显示 / 隐藏',
-      click: () => { win.isVisible() ? win.hide() : win.show(); },
-    },
+    { label: '显示 / 隐藏', click: () => { win.isVisible() ? win.hide() : win.show(); } },
     { type: 'separator' },
-    {
-      label: '退出',
-      click: () => { isQuiting = true; app.quit(); },
-    },
+    { label: '退出', click: () => { isQuiting = true; app.quit(); } },
   ]);
   tray.setToolTip('今日计划');
   tray.setContextMenu(menu);
   tray.on('double-click', () => win.show());
 }
+
+// 界面发来的窗口控制
+ipcMain.on('win:minimize', () => { if (win) win.minimize(); });
+ipcMain.on('win:close', () => { if (win) win.hide(); });
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.desktop.planner'); // 让 Windows 通知正确显示应用名

@@ -5,32 +5,68 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="widget">
-    <div class="header">
-      <h2>今日计划</h2>
-      <button id="settingsBtn" title="设置">⚙</button>
-    </div>
+  <div class="app">
+    <!-- 顶栏：返回 / 标题 / 最小化 / 关闭 -->
+    <header class="topbar">
+      <button id="backBtn" class="icon-btn back hidden" title="返回">←</button>
+      <h1 id="pageTitle">今日计划</h1>
+      <div class="win-controls">
+        <button id="minBtn" class="icon-btn" title="最小化">—</button>
+        <button id="closeBtn" class="icon-btn" title="关闭">✕</button>
+      </div>
+    </header>
 
-    <div class="input-row">
-      <input id="taskInput" placeholder="添加一条计划..." />
-      <button id="addBtn">+</button>
-    </div>
-    <div class="input-row">
-      <input id="taskTime" type="time" title="提醒时间（可不填）" />
-      <select id="taskRepeat" title="重复">
-        <option value="none">不重复</option>
-        <option value="daily">每天</option>
-        <option value="weekly">每周</option>
-      </select>
-    </div>
+    <!-- 内容区：四个页面，同一时刻只显示一个 -->
+    <main class="content">
+      <!-- 今日任务 -->
+      <section id="view-today" class="view active">
+        <ul id="todayList" class="task-list"></ul>
+        <p id="todayEmpty" class="empty">今天还没有任务，点右下角 ＋ 添加</p>
+      </section>
 
-    <div id="settingsPanel" class="settings-panel hidden">
-      <label>每日汇总提醒 <input id="summaryTime" type="time" /></label>
-      <label>透明度 <input id="opacity" type="range" min="0.3" max="1" step="0.05" /></label>
-      <label>主题色 <input id="accent" type="color" /></label>
-    </div>
+      <!-- 添加 / 编辑 任务 -->
+      <section id="view-add" class="view">
+        <form id="addForm" class="form">
+          <label>任务名称 <input id="f-name" placeholder="例如：背 10 个英文单词" required /></label>
+          <label>日期 <input id="f-date" type="date" /></label>
+          <div class="row2">
+            <label>开始时间 <input id="f-start" type="time" /></label>
+            <label>结束时间 <input id="f-end" type="time" /></label>
+          </div>
+          <label>是否重复
+            <select id="f-repeat">
+              <option value="none">不重复</option>
+              <option value="daily">每天</option>
+              <option value="weekly">每周</option>
+            </select>
+          </label>
+          <label>备注 <textarea id="f-notes" rows="3" placeholder="可选"></textarea></label>
+          <button type="submit" class="primary">保存任务</button>
+        </form>
+      </section>
 
-    <ul id="taskList"></ul>
+      <!-- 任务管理：编辑 / 删除 -->
+      <section id="view-manage" class="view">
+        <ul id="manageList" class="task-list"></ul>
+        <p id="manageEmpty" class="empty">还没有任务</p>
+      </section>
+
+      <!-- 任务日志 -->
+      <section id="view-log" class="view">
+        <ul id="logList" class="log-list"></ul>
+        <p id="logEmpty" class="empty">还没有日志记录</p>
+      </section>
+    </main>
+
+    <!-- 添加任务的悬浮按钮（只在今日页显示） -->
+    <button id="fab" class="fab" title="添加任务">＋</button>
+
+    <!-- 底部导航 -->
+    <nav class="bottomnav">
+      <button class="nav-item active" data-view="today"><span class="ico">🗓</span><span>今日</span></button>
+      <button class="nav-item" data-view="manage"><span class="ico">📋</span><span>管理</span></button>
+      <button class="nav-item" data-view="log"><span class="ico">🕘</span><span>日志</span></button>
+    </nav>
   </div>
 
   <!-- 顺序很重要：先数据层，再提醒层，最后界面层 -->
